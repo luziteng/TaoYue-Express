@@ -1,3 +1,5 @@
+// 密码加密脚本
+
 import bcrypt from 'bcryptjs';
 import Account from '../models/account'; // 请根据实际项目的路径调整
 import mongoose from 'mongoose'; // 如果你使用的是 mongoose 连接数据库

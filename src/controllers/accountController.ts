@@ -6,7 +6,6 @@ import bcrypt from 'bcryptjs'; //用于对密码进行加密和验证。
 import jwt from 'jsonwebtoken';// 生成token
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_secret_key';  // 通过环境变量获取 JWT 密钥
-
 // 登录接口
 export const login  = async (req: any, res: any) => {
   const { phone, password } = req.body;
@@ -37,18 +36,15 @@ export const login  = async (req: any, res: any) => {
     });
 
     // 返回 token 和账号信息
-    return res.status(STATUS_CODES.OK).send({
-      message: '登录成功',
-      token,
-      account: {
+    return res.status(STATUS_CODES.OK).send(successResponse({
+        token,
         id: account._id,
         phone: account.phone,
         role: account.role,
         status: account.status,
         wechat: account.wechat,
         images: account.images,
-      },
-    });
+    }));
   } catch (error) {
     if (error instanceof Error) {  
       return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).send({ message: 'Login failed', error: error.message });

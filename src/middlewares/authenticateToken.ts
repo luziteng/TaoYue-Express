@@ -1,28 +1,31 @@
+// middleware/authMiddleware.ts
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { STATUS_CODES } from '../constants/statusCodes';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
+const JWT_SECRET = process.env.JWT_SECRET || 'default_secret_key';
+// 不需要验证 token 的路由
+const noAuthRoutes = ['/login']; // 在这里添加不需要 token 的路由
 
-const authenticateToken = (req: Request, res: Response, next: NextFunction): void => {
+export const authenticateToken = (req: any, res: any, next: NextFunction): void => {
   const token = req.headers['authorization'];
-
-  if (!token) {
-    res.status(STATUS_CODES.UNAUTHORIZED).send({ message: 'Token is required' });
-    return;  // 确保不返回 Response 对象
+  console.log('token',token)
+  // 检查请求路径是否在不需要 token 的路由中
+  if (noAuthRoutes.includes(req.path)) {
+    return next(); // 如果是，无需进行 token 校验，直接跳过
   }
 
+  // 如果没有 token
+  if (!token) {
+    return res.status(STATUS_CODES.UNAUTHORIZED).send({ message: 'token 失效' });
+  }
   // 验证 token
-  jwt.verify(token.split(' ')[1], JWT_SECRET, (err, user) => {
+  jwt.verify(token.split(' ')[1], JWT_SECRET, (err: any, user: any) => {
+    console.log('err',err)
     if (err) {
-      res.status(STATUS_CODES.UNAUTHORIZED).send({ message: 'Invalid or expired token' });
-      return;  // 确保不返回 Response 对象
+      return res.status(STATUS_CODES.UNAUTHORIZED).send({ message: 'Invalid or expired token' });
     }
-    // @ts-ignore
-    // 将解码后的用户信息保存到请求对象中
-    req.user = user;
-    next();  // 确保调用了 next()
+    req.user = user; // @ts-ignore
+    next();
   });
 };
-
-export default authenticateToken;
