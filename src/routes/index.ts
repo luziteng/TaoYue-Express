@@ -1,5 +1,5 @@
 import express from 'express'; // 正确导入
-import { addAccount, getAccounts, deleteAccount } from '../controllers/accountController';
+import { addAccount, getAccounts, deleteAccount ,editAccount } from '../controllers/accountController';
 // import authenticateToken from '../middlewares/authenticateToken';
 // import { JwtPayload } from 'jsonwebtoken';
 const router = express.Router();
@@ -11,6 +11,7 @@ const router = express.Router();
 //   res.status(200).send({ message: 'Profile data', user });
 // });
 
+router.put('/accounts/:id',editAccount )// 编辑账号
 
 router.post('/account', addAccount); // 增加账号
 router.get('/accountList', getAccounts); // 查询所有账号

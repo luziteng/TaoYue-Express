@@ -9,7 +9,6 @@ const noAuthRoutes = ['/login']; // 在这里添加不需要 token 的路由
 
 export const authenticateToken = (req: any, res: any, next: NextFunction): void => {
   const token = req.headers['authorization'];
-  console.log('token',token)
   // 检查请求路径是否在不需要 token 的路由中
   if (noAuthRoutes.includes(req.path)) {
     return next(); // 如果是，无需进行 token 校验，直接跳过

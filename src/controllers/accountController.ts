@@ -56,9 +56,12 @@ export const login  = async (req: any, res: any) => {
 
 // 增加账号
 export const addAccount = async (req: any, res: any) => {
-  const { password, role, wechat, phone, address, status, images } = req.body;
+  const { username,password, role, wechat, phone, address, status, images } = req.body;
 
   // 校验必填字段
+  if (!username || typeof username !== 'string') {
+    return res.status(STATUS_CODES.BAD_REQUEST).send({ message: '请输入账号名称' });
+  }
   if (!password || typeof password !== 'string') {
     return res.status(STATUS_CODES.BAD_REQUEST).send({ message: '请输入账号密码' });
   }
@@ -82,6 +85,7 @@ export const addAccount = async (req: any, res: any) => {
 
     // 新账户数据
     const newAccountData = {
+      username,
       password: hashedPassword, // 保存加密后的密码
       role,
       wechat,
@@ -94,7 +98,7 @@ export const addAccount = async (req: any, res: any) => {
     const newAccount = new Account(newAccountData);
     await newAccount.save();
     
-    res.status(STATUS_CODES.CREATED).send(successResponse(newAccount, 'Account created successfully'));
+    res.status(STATUS_CODES.CREATED).send(successResponse(newAccount, '账号新建成功'));
   } catch (error) {
     if (error instanceof Error) {
       res
@@ -107,12 +111,94 @@ export const addAccount = async (req: any, res: any) => {
     }
   }
 };
+// 编辑账号
+export const editAccount = async (req: any, res: any) => {
+  const { id } = req.params; // 从请求参数中获取用户 ID
+  const { username, password, role, wechat, phone, address, status, images } = req.body;
+
+  // 校验必填字段
+  if (!username || typeof username !== 'string') {
+    return res.status(STATUS_CODES.BAD_REQUEST).send({ message: '请输入账号名称' });
+  }
+  if (!role || typeof role !== 'string') {
+    return res.status(STATUS_CODES.BAD_REQUEST).send({ message: '请选择账号权限' });
+  }
+  if (!address || typeof address !== 'string') {
+    return res.status(STATUS_CODES.BAD_REQUEST).send({ message: '请输入地址' });
+  }
+  if (!status || typeof status !== 'string') {
+    return res.status(STATUS_CODES.BAD_REQUEST).send({ message: '请选择账号状态' });
+  }
+  if (!phone || !/^1[3-9]\d{9}$/.test(phone)) { // 简单校验手机号码格式
+    return res.status(STATUS_CODES.BAD_REQUEST).send({ message: '请输入正确的手机号' });
+  }
+
+  try {
+    // 查找账户
+    const account = await Account.findById(id);
+    if (!account) {
+      return res.status(STATUS_CODES.NOT_FOUND).send({ message: '账号不存在' });
+    }
+
+    // 更新账户字段
+    account.username = username;
+    account.role = role;
+    account.phone = phone;
+    account.address = address;
+    account.status = status;
+    account.wechat = wechat || account.wechat; // 如果前端未传值，保留原值
+    account.images = images || account.images; // 如果前端未传值，保留原值
+
+    // 如果提供了新的密码，则加密并更新
+    if (password) {
+      const saltRounds = 10;
+      account.password = await bcrypt.hash(password, saltRounds);
+    }
+
+    await account.save(); // 保存更改
+    res.status(STATUS_CODES.OK).send(successResponse(account, '账号更新成功'));
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).send(errorResponse(STATUS_CODES.INTERNAL_SERVER_ERROR, 'Failed to update account', error.message));
+    } else {
+      res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).send(errorResponse(STATUS_CODES.INTERNAL_SERVER_ERROR, 'Failed to update account', error));
+    }
+  }
+};
 
 // 查询账号
 export const getAccounts  = async (req: any, res: any) => {
   try {
-    const accounts = await Account.find();
-    res.status(STATUS_CODES.CREATED).send(accounts);
+    // 获取分页参数
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const size = parseInt(req.query.size as string, 10) || 10; // 使用 size 替代 limit
+
+    // 获取筛选参数
+    const filter = req.query.filter as string; // 假设是个字符串，用于匹配手机号码或地址
+
+    // 构建查询条件
+    const query: any = {};
+    if (filter) {
+      query.$or = [
+        { phone: { $regex: filter, $options: 'i' } },
+        { address: { $regex: filter, $options: 'i' } },
+      ]; // 支持根据 filter 查询手机号码或地址
+    }
+
+    const skip = (page - 1) * size;
+
+    const accounts = await Account.find(query)
+      .skip(skip)
+      .limit(size); // 这里仍然使用 limit 来限制返回的数据量
+
+    const total = await Account.countDocuments(query);
+
+    res.status(STATUS_CODES.OK).send(successResponse({
+      data: accounts,
+      total,
+      page,
+      size, // 返回 size 而不是 limit
+    },'successly'));
   } catch (error) {
     if (error instanceof Error) {
       res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).send({ message: 'Failed to retrieve accounts', error: error.message });
