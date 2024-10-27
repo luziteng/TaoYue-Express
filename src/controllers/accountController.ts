@@ -56,7 +56,7 @@ export const login  = async (req: any, res: any) => {
 
 // 增加账号
 export const addAccount = async (req: any, res: any) => {
-  const { username,password, role, wechat, phone, address, status, images } = req.body;
+  const { username, password, role, wechat, phone, address, status, images } = req.body;
 
   // 校验必填字段
   if (!username || typeof username !== 'string') {
@@ -93,6 +93,8 @@ export const addAccount = async (req: any, res: any) => {
       address,
       status,
       images: images || [],
+      createdAt: new Date(), // 存储当前日期
+      updatedAt: new Date(), // 初始变更日期
     };
 
     const newAccount = new Account(newAccountData);
@@ -111,10 +113,11 @@ export const addAccount = async (req: any, res: any) => {
     }
   }
 };
+
 // 编辑账号
 export const editAccount = async (req: any, res: any) => {
   const { id } = req.params; // 从请求参数中获取用户 ID
-  const { username, password, role, wechat, phone, address, status, images } = req.body;
+  const { username, role, wechat, phone, address, status, images } = req.body;
 
   // 校验必填字段
   if (!username || typeof username !== 'string') {
@@ -148,16 +151,11 @@ export const editAccount = async (req: any, res: any) => {
     account.status = status;
     account.wechat = wechat || account.wechat; // 如果前端未传值，保留原值
     account.images = images || account.images; // 如果前端未传值，保留原值
-
-    // 如果提供了新的密码，则加密并更新
-    if (password) {
-      const saltRounds = 10;
-      account.password = await bcrypt.hash(password, saltRounds);
-    }
+    account.updatedAt = new Date(); // 更新变更日期
 
     await account.save(); // 保存更改
     res.status(STATUS_CODES.OK).send(successResponse(account, '账号更新成功'));
-  } catch (error) {
+  } catch (error) { 
     if (error instanceof Error) {
       res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).send(errorResponse(STATUS_CODES.INTERNAL_SERVER_ERROR, 'Failed to update account', error.message));
     } else {
@@ -166,8 +164,9 @@ export const editAccount = async (req: any, res: any) => {
   }
 };
 
+
 // 查询账号
-export const getAccounts  = async (req: any, res: any) => {
+export const getAccounts = async (req: any, res: any) => { 
   try {
     // 获取分页参数
     const page = parseInt(req.query.page as string, 10) || 1;
@@ -181,7 +180,7 @@ export const getAccounts  = async (req: any, res: any) => {
     if (filter) {
       query.$or = [
         { phone: { $regex: filter, $options: 'i' } },
-        { address: { $regex: filter, $options: 'i' } },
+        { username: { $regex: filter, $options: 'i' } },
       ]; // 支持根据 filter 查询手机号码或地址
     }
 
@@ -193,12 +192,26 @@ export const getAccounts  = async (req: any, res: any) => {
 
     const total = await Account.countDocuments(query);
 
+    // 返回的数据中可以选择是否包含密码的哈希值
+    const accountsWithPassword = accounts.map(account => ({
+      id: account._id,
+      username: account.username,
+      phone: account.phone,
+      address: account.address,
+      role: account.role,
+      status: account.status,
+      wechat: account.wechat,
+      images: account.images,
+      createdAt: account.createdAt, // 存储当前日期
+      updatedAt: account.updatedAt, // 初始变更日期
+    }));
+
     res.status(STATUS_CODES.OK).send(successResponse({
-      data: accounts,
+      data: accountsWithPassword,
       total,
       page,
       size, // 返回 size 而不是 limit
-    },'successly'));
+    }, 'successfully'));
   } catch (error) {
     if (error instanceof Error) {
       res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).send({ message: 'Failed to retrieve accounts', error: error.message });
@@ -207,6 +220,7 @@ export const getAccounts  = async (req: any, res: any) => {
     }
   }
 };
+
 
 // 删除账号
 export const deleteAccount  = async (req: any, res: any) => {
@@ -217,7 +231,7 @@ export const deleteAccount  = async (req: any, res: any) => {
     if (!deletedAccount) {
       return res.status(404).send({ message: 'Account not found' });
     }
-    res.status(200).send({ message: 'Account deleted successfully', account: deletedAccount });
+    res.status(STATUS_CODES.OK).send(successResponse(null,'账号删除成功'));
   } catch (error) {
     if (error instanceof Error) {
       res.status(500).send({ message: 'Failed to delete account', error: error.message });

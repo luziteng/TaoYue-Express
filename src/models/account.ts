@@ -10,6 +10,8 @@ interface IAccount extends Document {
   wechat?: string; // 微信绑定信息
   images?: Array<any>; // 护照信息
   address:string;// 门店地址
+  createdAt:Date;// 生成日期
+  updatedAt:Date; // 更新日期
 }
 
 const AccountSchema: Schema = new Schema({
@@ -20,6 +22,8 @@ const AccountSchema: Schema = new Schema({
   status: { type: String,required: true, default: 'start' }, // 状态：启用：start;禁用：forbid;postpone:缴费逾期；
   wechat: { type: String, default: null },
   address:{ type: String, default: null},
+  createdAt: { type: Date, default: Date.now }, // 默认为当前时间
+  updatedAt: { type: Date, default: Date.now }, // 默认为当前时间
   images: { type: Array, default: null },
 });
 
