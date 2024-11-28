@@ -10,7 +10,8 @@ import routes from './routes/index';
 import authRoutes from './routes/auth';
 import errorHandler from './middlewares/errorHandler';
 import { STATUS_CODES } from './constants/statusCodes';
-import { authenticateToken } from './middlewares/authenticateToken'
+import { authenticateToken,checkAdminRole } from './middlewares/authenticateToken'
+import roleRoutes from './routes/adminrole'
 
 const app = express();
 const port = 3000;
@@ -29,7 +30,7 @@ app.use(cors());
 // 注册路由
 app.use('/api', authRoutes); // 登录相关路由
 app.use('/api', authenticateToken, routes); // 注册用户路由，前面添加中间件
-
+app.use('/api',authenticateToken,checkAdminRole,roleRoutes)
 
 // 处理 404
 app.use((req, res, next) => {
